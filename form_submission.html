@@ -1,0 +1,57 @@
+<form id="a_time_wasting_gig" method="post" action="#" enctype="multipart/form-data">
+    <!-- Added "full_name" as the name attribute for consistency in the PHP code -->
+    <input type="text" name="full_name" id="full_name">
+    <input type="email" name="email" id="email">
+    <input id="submit" name="submit" type="submit" value="Upload" />
+    <input type="file" name="identification_document" id="identification_document"  multiple="false" />
+</form>
+
+<?php
+// Added the full_name key to the $_POST array
+function doVery_CoolThings(){
+    if (
+        !empty($_POST['full_name']) &&
+        !empty($_POST['email'])
+    ) {
+        global $wpdb;
+        require_once( ABSPATH . 'wp-admin/includes/image.php' );
+        require_once( ABSPATH . 'wp-admin/includes/file.php' );
+        require_once( ABSPATH . 'wp-admin/includes/media.php' );
+
+        // Use a nonce to improve security
+        check_admin_referer('upload_nonce');
+
+        // Validate email
+        if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+            wp_die('Invalid email address. Please try again.');
+        }
+
+        // Handle file upload
+        $attachment_id = media_handle_upload('identification_document', 0);
+
+        // Check if the file upload was successful
+        if (is_wp_error($attachment_id)) {
+            wp_die('Error uploading the identification document. Please try again.');
+        }
+
+        // Get the attachment URL
+        $attachment_url = wp_get_attachment_url($attachment_id);
+
+        // Insert data into the database using prepared statements for security
+        $wpdb->insert(
+            $wpdb->prefix . 'applicants_table',
+            array(
+                'name' => sanitize_text_field($_POST['full_name']),
+                'email' => sanitize_email($_POST['email']),
+                'identification_document' => esc_url_raw($attachment_url)
+            )
+        );
+
+        // Redirect after successful submission
+        wp_redirect(home_url('/success-page'));
+        exit;
+    } else {
+        wp_die('Please fill in all required fields.');
+    }
+}
+?>
